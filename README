@@ -1,0 +1,29 @@
+This is a mirror of http://www.vim.org/scripts/script.php?script_id=1610
+
+Increase or decrease a Roman number found under the cursor, with [count].
+If a decimal number is found it is converted into its corresponding Roman
+number, ignoring the [count].  Any other word is converted to the Roman
+number that [count] corresponds to.
+
+Range: I .. MMMCMXCIX (1..3999)
+Higher numbers result in more than three "M"s.
+
+There are interface mappings: <plug>IncRoman and <plug>DecRoman .
+They can be mapped globally or local to buffer, the latter is the default.
+From the script:
+    nmap <unique><buffer> <C-A> <plug>IncRoman
+    nmap <unique><buffer> <C-X> <plug>DecRoman
+
+Therefore if you want to use the script as a plugin, you should define
+global keys in your .vimrc:
+    nmap <C-A> <plug>IncRoman
+    nmap <C-X> <plug>DecRoman
+
+Other scripts with support for Roman numbers:
+vimscript #197 genutils : General utility functions
+    genutils#Roman2Decimal(str)
+vimscript #431 VimFootnotes : Insert various types of footnotes
+vimscript #670 VisIncr : Produce increasing/decreasing columns of numbers, dates, or daynames
+vimscript #2120 speeddating.vim : Use CTRL-A/X to increment dates, times, and more
+
+Last Change: 2007 Jan 11
