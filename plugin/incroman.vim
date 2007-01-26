@@ -1,28 +1,79 @@
-" Vim script file
+" Vim script -- cope with Roman numbers
 " File:		incroman.vim
+" Version:	2
 " Vim Version:	Vim 6.0
-" Date:		09-07-2006, 17-07-2006
+" Last Change:	2007 Jan 26
 " Author:	Andy Wokula <anwoku@yahoo.de>
 "
 " Description:
-" Remaps the normal mode keys Ctrl-A and Ctrl-X to increase/decrease a Roman
-" number (I, II, III, IV, ...) found under the cursor, with optional count.
-" The standard behaviour of these keys is not available then (see :help
-" Ctrl-A).
+" Increase or decrease a Roman number found in the text.  Convert a decimal
+" number or any word into a Roman number.
+" 
+" Installation:
+" Three options
+" (1) Activate for current buffer:
+"	:source incroman.vim
 "
+" (2) Source globally from .vimrc .  You should then also map Ctrl-A and
+"     Ctrl-X globally:
+"	:noremap <c-a> <plug>IncRoman
+"	:noremap <c-x> <plug>DecRoman
+"	:source incroman.vim
+"
+" (3) Source from an ftplugin.
+"     You can map other keys than Ctrl-A/Ctrl-X, for example:
+"	:noremap <buffer> + <plug>IncRoman
+"	:noremap <buffer> - <plug>DecRoman
+"	:source incroman.vim
+"	
 " Usage:
-" :source incroman.vim
+" Use Ctrl-A/Ctrl-X to increase/decrease a Roman number, but there is more
+" about it.  If the word found under the cursor
+" ... is a decimal number, it is converted into a Roman number and not
+"     increased or decreased, a count is ignored.
+" ... is a Roman number, then it is increased or decreased using count;
+"     Roman numbers with slightly wrong format (e.g. IIII or IM) are
+"     accepted.
+" ... is some other string, it is replaced by the Roman number whose value
+"     is count, "I" if count is missing.
 "
-" Some Notes: Errors are never given, but standard values (zero or one).
-" Thus you may turn any word (including a blank line) under the cursor into
-" a roman number.  Try Ctrl-A + Ctrl-X to correct a roman number having a
-" wrong format, e.g. IIII -> IV or IM -> CMXCIX.  Case is always turned into
-" upper case.
+" To show the value of a Roman number at the cursor:
+"   :echo Roman2Decimal(expand("<cword>"))
+"
+" Global
+"   Maps: <plug>IncRoman, <plug>DecRoman
+"   Functions: Roman2Decimal(), Decimal2Roman()
+
+" Buffer Local Stuff: load only once per buffer
+if exists("b:loaded_incroman")
+    finish
+endif
+let b:loaded_incroman = 1
+
+" Bufferlocal Mappings:
+if !hasmapto('<plug>IncRoman')
+    nmap <unique><buffer> <c-a> <plug>IncRoman
+endif
+if !hasmapto('<plug>DecRoman')
+    nmap <unique><buffer> <c-x> <plug>DecRoman
+endif
 
 
-" script local variables:
+" Global Stuff: load only once per session
+if exists("loaded_incroman")
+    finish
+endif
+let loaded_incroman = 1
 
-" roman values, curly-braces-names used {{{
+noremap <unique><script> <plug>IncRoman <sid>inc
+noremap <unique><script> <plug>DecRoman <sid>dec
+noremap <silent> <sid>inc :<c-u>call<sid>Gc()<cr>ciw<c-r>=<sid>IncRoman(@-)<cr><esc>
+noremap <silent> <sid>dec :<c-u>call<sid>Gc()<cr>ciw<c-r>=<sid>DecRoman(@-)<cr><esc>
+
+let s:cpo_save = &cpo
+set cpo&vim
+
+" roman values, curly-braces-names used
 let s:rvI = 1
 let s:rvV = 5
 let s:rvX = 10
@@ -30,13 +81,11 @@ let s:rvL = 50
 let s:rvC = 100
 let s:rvD = 500
 let s:rvM = 1000
-"}}}
 
+" Global Functions: can be used everywhere
 
-" global functions:
-
-" returns the decimal value of the roman <str> 
-fun! Roman2Decimal(str) "{{{
+" returns the decimal value of the Roman number <str> 
+function Roman2Decimal(str)
     let r = toupper(a:str)
     if r=='' || r =~ '[^IVXLCDM]'
 	" return 0 if empty or number contains non-roman chars
@@ -54,10 +103,10 @@ fun! Roman2Decimal(str) "{{{
 	let i = i+1
     endw
     return rval + s:rv{r[i]}
-endfun "}}}
+endfunction
 
-" returns the roman str of the decimal value <n>
-fun! Decimal2Roman(n) "{{{
+" returns the Roman number string of the decimal value <n>
+function Decimal2Roman(n)
     let s = ''
     " turn numbers smaller than 1 into 1
     let n = a:n<1 ? 1 : a:n
@@ -70,11 +119,7 @@ fun! Decimal2Roman(n) "{{{
 	    let s = s . rz
 	    let n = n - rzval
 	endw
-	if rz =~ '[DLV]'
-	    let of = 1
-	else
-	    let of = 2
-	endif
+	let of = rz =~ '[DLV]' ? 1 : 2
 	if a<6 && (n >= rzval - s:rv{rs[a+of]})
 	    let s = s . rs[a+of] . rz
 	    let n = n - (rzval - s:rv{rs[a+of]})
@@ -82,22 +127,36 @@ fun! Decimal2Roman(n) "{{{
 	let a = a+1
     endw
     return s
-endfun "}}}
+endfunction
 
-" adds decimal <cnt> to roman <str> and returns the roman result
-fun! IncRoman(str, cnt) "{{{
-    return Decimal2Roman(Roman2Decimal(a:str)+a:cnt)
-endfun "}}}
+" Script Local Functions:
 
-" subtracts decimal <cnt> from roman <str> and returns the roman result
-fun! DecRoman(str, cnt) "{{{
-    return Decimal2Roman(Roman2Decimal(a:str)-a:cnt)
-endfun "}}}
+" Get the count (use function to avoid global variable)
+function <sid>Gc()
+    let s:cnt = v:count1
+endfunction
+
+" adds decimal s:cnt to roman a:str and returns the roman result
+function <sid>IncRoman(str)
+    if a:str =~ '^\d\+$'
+	" turn decimal argument into Roman number
+	return Decimal2Roman(a:str)
+    else
+	return Decimal2Roman(Roman2Decimal(a:str)+s:cnt)
+    endif
+endfunction
+
+" subtracts decimal s:cnt from roman a:str and returns the roman result
+function <sid>DecRoman(str)
+    if a:str =~ '^\d\+$'
+	" turn decimal argument into Roman number
+	return Decimal2Roman(a:str)
+    else
+	return Decimal2Roman(Roman2Decimal(a:str)-s:cnt)
+    endif
+endfunction
 
 
-" global mappings:
-
-nmap <silent> <c-a> :<c-u>let c=v:count1<cr>ciw<c-r>=IncRoman(@-,c)<cr><esc>
-nmap <silent> <c-x> :<c-u>let c=v:count1<cr>ciw<c-r>=DecRoman(@-,c)<cr><esc>
-
-" vim: set fdm=marker:
+" Restore the previous value of 'cpoptions'.
+let &cpo = s:cpo_save
+unlet s:cpo_save
